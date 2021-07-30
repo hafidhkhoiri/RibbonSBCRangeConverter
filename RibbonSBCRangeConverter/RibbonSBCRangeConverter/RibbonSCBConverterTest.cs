@@ -62,14 +62,211 @@ namespace RibbonSBCRangeConverter
             var numberOfDigits = rangeStart.ToString().Length;
             var efficientSbcRange = new List<string> { "1234", "123450" };
 
-            bool isEffectiveRange = IsEfficientRange(numbers, sbcRange, numberOfDigits, out List<string> inEfficientRange);
-            bool isEffectiveRange2= IsEfficientRange(numbers, efficientSbcRange, numberOfDigits, out List<string> inEfficientRange2);
+            bool isEffectiveRange = IsEfficientRanges(numbers, sbcRange, numberOfDigits, out List<string> inEfficientRange);
+            bool isEffectiveRange2= IsEfficientRanges(numbers, efficientSbcRange, numberOfDigits, out List<string> inEfficientRange2);
             
             Assert.False(isEffectiveRange);
             Assert.Equal(1, inEfficientRange.Count);
 
             Assert.True(isEffectiveRange2);
             Assert.Empty(inEfficientRange2);
+        }
+
+        [Fact]
+        public void ShouldRecalculateRangeCorrectly()
+        {
+            List<PhoneNumber> numbers = new List<PhoneNumber>();
+
+            numbers.AddRange(NumberHelper.SetNumbers(123440, 123550, "Ardall"));
+            numbers.AddRange(NumberHelper.SetNumbers(223450, 223900, "Leo"));
+
+            var sbcRange = new List<NumberRange> {
+                new NumberRange{
+                    RibbonSbcRange = "123",
+                    Customer = "Ardall",
+                    NumberOfDigits = 6,
+                },
+                new NumberRange{
+                    RibbonSbcRange = "12345",
+                    Customer = "Ardall",
+                    NumberOfDigits = 6,
+                },
+                new NumberRange{
+                    RibbonSbcRange = "22345",
+                    Customer = "Leo",
+                    NumberOfDigits = 6,
+                },
+            };
+
+            var res = RecalculateRange(sbcRange, numbers);
+        }
+
+        public List<NumberRange> RecalculateRange(List<NumberRange> existingSbcRange, List<PhoneNumber> existingNumbers)
+        {
+            // recalculate per customer
+            var byCustomer = from p in existingSbcRange
+                             group p by p.Customer into g
+                             select new 
+                             {
+                                 Customer = g.Key, 
+                                 SbcRanges = g.ToList(),
+                             };
+
+            byCustomer.ToList().ForEach(s =>
+            {
+                var sbcRanges = s.SbcRanges.Select(m => m.RibbonSbcRange).ToList();
+                var numberOfDigits = s.SbcRanges.First().NumberOfDigits;
+                var finalRange = new List<NumberRange>();
+
+                var existingPhoneNumbers = existingNumbers.Where(n => n.Customer == s.Customer).Select(m => m.Number).ToList();
+                // is there any inefficient ranges
+                if (!IsEfficientRanges(existingPhoneNumbers, sbcRanges, numberOfDigits, out var inEfficientRange))
+                {
+                    // remove it
+
+                    // recostruct new range from the inefficient range
+                    var validRange = s.SbcRanges.Where(s => !inEfficientRange.Any(i => s.RibbonSbcRange == i)).ToList();
+                    finalRange.AddRange(validRange);
+
+                    inEfficientRange.ForEach(e =>
+                    {
+                        var newRange = new List<NumberRange>();
+
+                        var totalUnallocatedNumbers = GetUnallocatedNumbers(existingPhoneNumbers, e, numberOfDigits);
+                        if (totalUnallocatedNumbers.Item1.Count > 0)
+                        {
+                            var rangeStart = existingPhoneNumbers.Min();
+                            var rangeEnd = validRange.First().Coverage.Min();
+                            newRange = RangeToRibbonSBC(rangeStart.ToString(), rangeEnd.ToString()).Select(n => new NumberRange
+                            {
+                                Customer = s.Customer,
+                                RibbonSbcRange = n,
+                                RangeStart = rangeStart,
+                                RangeEnd = rangeEnd
+                            })
+                            .ToList();
+
+                            newRange.ForEach(n =>
+                            {
+                                if (!finalRange.Any(f => n.RibbonSbcRange.StartsWith(f.RibbonSbcRange)))
+                                {
+                                    finalRange.Add(n);
+                                }
+                            });
+                        }
+                        
+                        if(totalUnallocatedNumbers.Item2.Count > 0)
+                        {
+                            var rangeStart = validRange.Last().Coverage.Min();
+                            var rangeEnd = existingPhoneNumbers.Max();
+                            newRange = RangeToRibbonSBC(rangeStart.ToString(), rangeEnd.ToString()).Select(n => new NumberRange
+                            {
+                                Customer = s.Customer,
+                                RibbonSbcRange = n,
+                                RangeStart = rangeStart,
+                                RangeEnd = rangeEnd
+                            })
+                            .ToList();
+
+                            newRange.ForEach(n =>
+                            {
+                                if (!finalRange.Any(f => n.RibbonSbcRange.StartsWith(f.RibbonSbcRange)))
+                                {
+                                    finalRange.Add(n);
+                                }
+                            });;
+                        }
+                    });
+
+                    // verify the total numbers equal to translated sbc numbers
+                    if (RangesToNumbers(finalRange.Select(m => m.RibbonSbcRange).ToList(), numberOfDigits).Count == existingPhoneNumbers.Count)
+                    {
+                        Console.WriteLine("All good");
+                        // then store finalRange 
+                    }
+                }
+                else
+                {
+                    // it maybe an efficient range, but there could be number that have no range counterpart
+                    // TODO
+                }
+            });
+
+            return null;
+        }
+
+        // TODO: Extract numbers that has not put in range
+        public List<int> GetUndefinedRange()
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Get unallocated numbers to range that could be bigger than it should
+        /// The left part if the range cover number below the min number
+        /// The right part if the range cover number above the max number
+        /// </summary>
+        /// <param name="existingNumbers"></param>
+        /// <param name="sbcRange"></param>
+        /// <param name="numberOfDigits"></param>
+        /// <returns></returns>
+        public Tuple<List<int>, List<int>> GetUnallocatedNumbers(List<int> existingNumbers, string sbcRange, int numberOfDigits)
+        {
+            List<int> LeftPart = new List<int>();
+            List<int> RightPart = new List<int>();
+
+            var translatedNumbers = RangeToNumbers(sbcRange, numberOfDigits);
+            if (translatedNumbers.Min() < existingNumbers.Min())
+            {
+                var rate = Math.Log10(existingNumbers.Min() - translatedNumbers.Min());
+                if (rate > 1)
+                {
+                    for(var i = translatedNumbers.Min(); i <= existingNumbers.Min(); i++)
+                    {
+                        LeftPart.Add(i);
+                    }
+                }
+            }
+
+            if (translatedNumbers.Max() > existingNumbers.Max())
+            {
+                var rate = Math.Log10(translatedNumbers.Max() - existingNumbers.Max());
+                if (rate > 1)
+                {
+                    for (var i = existingNumbers.Max(); i <= translatedNumbers.Max(); i++)
+                    {
+                        RightPart.Add(i);
+                    }
+                }
+            }
+
+            return Tuple.Create(LeftPart, RightPart);
+        }
+
+        public int GetTotalUnallocatedNumbers(List<int> existingNumbers, string sbcRange, int numberOfDigits)
+        {
+            int unallocatedNumbers = default;
+
+            var translatedNumbers = RangeToNumbers(sbcRange, numberOfDigits);
+            if (translatedNumbers.Min() < existingNumbers.Min())
+            {
+                var rate = Math.Log10(existingNumbers.Min() - translatedNumbers.Min());
+                if (rate > 1)
+                {
+                    unallocatedNumbers += existingNumbers.Min() - translatedNumbers.Min();
+                }
+            }
+            
+            if (translatedNumbers.Max() > existingNumbers.Max())
+            {
+                var rate = Math.Log10(translatedNumbers.Max() - existingNumbers.Max());
+                if (rate > 1)
+                {
+                    unallocatedNumbers += translatedNumbers.Max() - existingNumbers.Max();
+                }
+            }
+
+            return unallocatedNumbers;
         }
 
         /// <summary>
@@ -79,38 +276,23 @@ namespace RibbonSBCRangeConverter
         /// <param name="existingNumbers"></param>
         /// <param name="sbcRange"></param>
         /// <param name="numberOfDigits"></param>
-        /// <param name="inEffectiveRange"></param>
+        /// <param name="inEfficientRange"></param>
         /// <returns></returns>
-        public bool IsEfficientRange(List<int> existingNumbers, List<string> sbcRange, int numberOfDigits, out List<string> inEffectiveRange)
+        public bool IsEfficientRanges(List<int> existingNumbers, List<string> sbcRange, int numberOfDigits, out List<string> inEfficientRange)
         {
-            bool isEffective = true;
-            inEffectiveRange = new List<string>();
-            // this compromise till 10%, less than consider as ineffective range
-            // note: this temporary definition of effective range
+            bool isEfficient = true; ;
+            inEfficientRange = new List<string>();
             foreach (var s in sbcRange)
             {
-                var translatedNumbers = RangeToNumbers(s, numberOfDigits);
-                if (translatedNumbers.Min() < existingNumbers.Min())
+                var totalUnallocatedNumbers = GetTotalUnallocatedNumbers(existingNumbers, s, numberOfDigits);
+                if (totalUnallocatedNumbers > 0)
                 {
-                    var rate = Math.Log10(existingNumbers.Min() - translatedNumbers.Min());
-                    if (rate > 1)
-                    {
-                        inEffectiveRange.Add(s);
-                        isEffective = false;
-                    }
-                }
-                else if (translatedNumbers.Max() > existingNumbers.Max())
-                {
-                    var rate = Math.Log10(translatedNumbers.Max() - existingNumbers.Max());
-                    if (rate > 1)
-                    {
-                        inEffectiveRange.Add(s);
-                        isEffective = false;
-                    }
+                    isEfficient = false;
+                    inEfficientRange.Add(s);
                 }
             }
 
-            return isEffective;
+            return isEfficient;
         }
 
         /// <summary>
