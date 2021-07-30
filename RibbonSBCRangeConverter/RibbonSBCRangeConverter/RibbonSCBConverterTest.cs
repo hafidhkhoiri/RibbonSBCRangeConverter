@@ -15,7 +15,7 @@ namespace RibbonSBCRangeConverter
             var rangeEnd = 340761009;
             var totalNumbers = (rangeEnd - rangeStart + 1);
             var res = RangeToRibbonSBC(rangeStart.ToString(), rangeEnd.ToString());
-            var back = RangeToNumbers(res, rangeStart.ToString().Length).Distinct().ToList();
+            var back = RangesToNumbers(res, rangeStart.ToString().Length).Distinct().ToList();
             Assert.Equal(back.Count, totalNumbers);
             Assert.Equal(44, res.Count);
 
@@ -23,7 +23,7 @@ namespace RibbonSBCRangeConverter
             rangeEnd = 340761009;
             totalNumbers = (rangeEnd - rangeStart + 1);
             res = RangeToRibbonSBC(rangeStart.ToString(), rangeEnd.ToString());
-            back = RangeToNumbers(res, rangeStart.ToString().Length).Distinct().ToList();
+            back = RangesToNumbers(res, rangeStart.ToString().Length).Distinct().ToList();
             Assert.Equal(back.Count, totalNumbers);
             Assert.Equal(26, res.Count);
 
@@ -31,7 +31,7 @@ namespace RibbonSBCRangeConverter
             rangeEnd = 340760009;
             totalNumbers = (rangeEnd - rangeStart + 1);
             res = RangeToRibbonSBC(rangeStart.ToString(), rangeEnd.ToString());
-            back = RangeToNumbers(res, rangeStart.ToString().Length).Distinct().ToList();
+            back = RangesToNumbers(res, rangeStart.ToString().Length).Distinct().ToList();
             Assert.Equal(back.Count, totalNumbers);
             Assert.Equal(30, res.Count);
         }
@@ -50,29 +50,88 @@ namespace RibbonSBCRangeConverter
         public void CanDetectInEffectiveRange()
         {
             List<int> numbers = new List<int>();
-            var rangeStart = 12340;
-            var rangeEnd = 12350;
+            var rangeStart = 123400;
+            var rangeEnd = 123500;
 
             for (var m = rangeStart; m <= rangeEnd; m++)
             {
                 numbers.Add(m);
             }
 
-            var sbcRange = new List<string> { "123" };
+            var sbcRange = new List<string> { "123", "1234" };
             var numberOfDigits = rangeStart.ToString().Length;
-            var effectiveSbcRange = new List<string> { "1234", "123450" };
+            var efficientSbcRange = new List<string> { "1234", "123450" };
 
-            Assert.False(IsEffectiveRange(numbers, sbcRange, numberOfDigits));
-            Assert.True(IsEffectiveRange(numbers, effectiveSbcRange, numberOfDigits));
+            bool isEffectiveRange = IsEfficientRange(numbers, sbcRange, numberOfDigits, out List<string> inEfficientRange);
+            bool isEffectiveRange2= IsEfficientRange(numbers, efficientSbcRange, numberOfDigits, out List<string> inEfficientRange2);
+            
+            Assert.False(isEffectiveRange);
+            Assert.Equal(1, inEfficientRange.Count);
+
+            Assert.True(isEffectiveRange2);
+            Assert.Empty(inEfficientRange2);
         }
 
-        public bool IsEffectiveRange(List<int> existingNumbers, List<string> sbcRange, int numberOfDigits)
+        /// <summary>
+        /// Check if the range is an effecient range by measuring number different by the order of log10
+        /// If it's more than 1, considered as ineffecient
+        /// </summary>
+        /// <param name="existingNumbers"></param>
+        /// <param name="sbcRange"></param>
+        /// <param name="numberOfDigits"></param>
+        /// <param name="inEffectiveRange"></param>
+        /// <returns></returns>
+        public bool IsEfficientRange(List<int> existingNumbers, List<string> sbcRange, int numberOfDigits, out List<string> inEffectiveRange)
         {
-            var totalNumbersInRibbonSBCRange = RangeToNumbers(sbcRange, numberOfDigits);
-
+            bool isEffective = true;
+            inEffectiveRange = new List<string>();
             // this compromise till 10%, less than consider as ineffective range
             // note: this temporary definition of effective range
-            return (existingNumbers.Count / totalNumbersInRibbonSBCRange.Count) > 0.1;
+            foreach (var s in sbcRange)
+            {
+                var translatedNumbers = RangeToNumbers(s, numberOfDigits);
+                if (translatedNumbers.Min() < existingNumbers.Min())
+                {
+                    var rate = Math.Log10(existingNumbers.Min() - translatedNumbers.Min());
+                    if (rate > 1)
+                    {
+                        inEffectiveRange.Add(s);
+                        isEffective = false;
+                    }
+                }
+                else if (translatedNumbers.Max() > existingNumbers.Max())
+                {
+                    var rate = Math.Log10(translatedNumbers.Max() - existingNumbers.Max());
+                    if (rate > 1)
+                    {
+                        inEffectiveRange.Add(s);
+                        isEffective = false;
+                    }
+                }
+            }
+
+            return isEffective;
+        }
+
+        /// <summary>
+        /// Helper to translate range to numbers, need to improve performance
+        /// </summary>
+        /// <param name="sbcRange"></param>
+        /// <param name="numberOfDigits"></param>
+        /// <returns></returns>
+        public List<int> RangeToNumbers(string sbcRange, int numberOfDigits)
+        {
+            List<int> numbers = new List<int>();
+            var rangeLength = sbcRange.ToString().Length;
+            var degree = (int)Math.Pow(10, numberOfDigits - rangeLength);
+            var _number = int.Parse(sbcRange) * degree;
+            var _upperlimit = _number + (degree - 1);
+            for (var y = _number; y <= _upperlimit; y++)
+            {
+                numbers.Add(y);
+            }
+
+            return numbers;
         }
 
         /// <summary>
@@ -81,19 +140,12 @@ namespace RibbonSBCRangeConverter
         /// <param name="sbcRange"></param>
         /// <param name="numberOfDigits"></param>
         /// <returns></returns>
-        public List<string> RangeToNumbers(List<string> sbcRange, int numberOfDigits)
+        public List<int> RangesToNumbers(List<string> sbcRange, int numberOfDigits)
         {
-            List<string> numbers = new List<string>();
+            List<int> numbers = new List<int>();
             sbcRange.ForEach(r =>
             {
-                var rangeLength = r.ToString().Length;
-                var degree = Math.Pow(10, numberOfDigits - rangeLength);
-                var _number = int.Parse(r) * degree;
-                var _upperlimit = _number + (degree - 1);
-                for (var y = _number; y <= _upperlimit; y++)
-                {
-                    numbers.Add(y.ToString());
-                }
+                numbers.AddRange(RangeToNumbers(r, numberOfDigits));
             });
 
             return numbers;
