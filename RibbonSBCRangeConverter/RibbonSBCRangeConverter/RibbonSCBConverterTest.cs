@@ -46,17 +46,35 @@ namespace RibbonSBCRangeConverter
             Assert.Equal(new List<string> { "1234", "12350" }, res);
         }
 
-        public List<int> RangeToSBC(int start, int end)
+        [Fact]
+        public void CanDetectInEffectiveRange()
         {
-            var numberOfDigits = start.ToString().Length;
-
             List<int> numbers = new List<int>();
+            var rangeStart = 12340;
+            var rangeEnd = 12350;
 
-            var factor = Math.Pow(10, numberOfDigits);
-            var s1 = start / factor;
+            for (var m = rangeStart; m <= rangeEnd; m++)
+            {
+                numbers.Add(m);
+            }
 
-            return numbers;
+            var sbcRange = new List<string> { "123" };
+            var numberOfDigits = rangeStart.ToString().Length;
+            var effectiveSbcRange = new List<string> { "1234", "123450" };
+
+            Assert.False(IsEffectiveRange(numbers, sbcRange, numberOfDigits));
+            Assert.True(IsEffectiveRange(numbers, effectiveSbcRange, numberOfDigits));
         }
+
+        public bool IsEffectiveRange(List<int> existingNumbers, List<string> sbcRange, int numberOfDigits)
+        {
+            var totalNumbersInRibbonSBCRange = RangeToNumbers(sbcRange, numberOfDigits);
+
+            // this compromise till 10%, less than consider as ineffective range
+            // note: this temporary definition of effective range
+            return (existingNumbers.Count / totalNumbersInRibbonSBCRange.Count) > 0.1;
+        }
+
         /// <summary>
         /// This method to translate back the Ribbon SBC range to actual numbers
         /// </summary>
