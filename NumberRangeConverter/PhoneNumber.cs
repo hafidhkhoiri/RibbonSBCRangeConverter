@@ -1,4 +1,4 @@
-﻿namespace RibbonSBCRangeConverter
+﻿namespace NumberRangeConverter
 {
     public class PhoneNumber
     {

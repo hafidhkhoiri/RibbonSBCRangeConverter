@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace RibbonSBCRangeConverter
+namespace NumberRangeConverter
 {
     public class NumberHelper
     {

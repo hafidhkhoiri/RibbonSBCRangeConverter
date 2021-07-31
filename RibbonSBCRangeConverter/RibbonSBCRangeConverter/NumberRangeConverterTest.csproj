@@ -4,6 +4,8 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
 
     <IsPackable>false</IsPackable>
+
+    <AssemblyName>NumberRangeConverterTest</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +19,10 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\NumberRangeConverter\NumberRangeConverter.csproj" />
   </ItemGroup>
 
 </Project>
