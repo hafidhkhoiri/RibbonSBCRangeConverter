@@ -5,7 +5,7 @@ using System.Text;
 
 namespace RibbonSBCRangeConverter
 {
-    public class NumberRange
+    public class RibbonNumberRange
     {
         public string RibbonSbcRange { get; set; }
 
