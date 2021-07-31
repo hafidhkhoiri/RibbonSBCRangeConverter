@@ -6,7 +6,7 @@ namespace RibbonSBCRangeConverter
 {
     public class NumberHelper
     {
-        public static List<PhoneNumber> SetNumbers(int RangeStart,int RangeEnd, string Customer)
+        public static List<PhoneNumber> SetNumbers(uint RangeStart, uint RangeEnd, string Customer)
         {
             List<PhoneNumber> result = new List<PhoneNumber>();
 

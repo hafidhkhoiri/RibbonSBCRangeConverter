@@ -24,9 +24,9 @@ namespace RibbonSBCRangeConverter
             }
         }
 
-        private List<int> _coverage = null;
+        private List<uint> _coverage = null;
 
-        public List<int> Coverage
+        public List<uint> Coverage
         {
             get
             {
@@ -38,11 +38,11 @@ namespace RibbonSBCRangeConverter
             }
         }
 
-        public int RangeStart { get; set; }
+        public uint RangeStart { get; set; }
 
-        public int RangeEnd { get; set; }
+        public uint RangeEnd { get; set; }
 
-        public List<int> Numbers { get; private set; }
+        public List<uint> Numbers { get; private set; }
 
         public void SetNumbers()
         {
@@ -56,12 +56,12 @@ namespace RibbonSBCRangeConverter
         /// Helper to translate range to numbers, need to improve performance
         /// </summary>
         /// <returns></returns>
-        public List<int> RangeToNumbers()
+        public List<uint> RangeToNumbers()
         {
-            List<int> numbers = new List<int>();
+            List<uint> numbers = new List<uint>();
             var rangeLength = RibbonSbcRange.Length;
-            var degree = (int)Math.Pow(10, NumberOfDigits - rangeLength);
-            var _number = int.Parse(RibbonSbcRange) * degree;
+            var degree = (uint)Math.Pow(10, NumberOfDigits - rangeLength);
+            var _number = uint.Parse(RibbonSbcRange) * degree;
             var _upperlimit = _number + (degree - 1);
             for (var y = _number; y <= _upperlimit; y++)
             {

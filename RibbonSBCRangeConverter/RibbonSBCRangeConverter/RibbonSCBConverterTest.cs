@@ -49,9 +49,9 @@ namespace RibbonSBCRangeConverter
         [Fact]
         public void CanDetectInEffectiveRange()
         {
-            List<int> numbers = new List<int>();
-            var rangeStart = 123400;
-            var rangeEnd = 123500;
+            List<uint> numbers = new List<uint>();
+            uint rangeStart = 123400;
+            uint rangeEnd = 123500;
 
             for (var m = rangeStart; m <= rangeEnd; m++)
             {
@@ -141,10 +141,10 @@ namespace RibbonSBCRangeConverter
             {
                 var finalRange = new List<RibbonNumberRange>();
                 var numberOfDigits = s.SbcRanges.First().NumberOfDigits;
+                var allCustomersNumberRange = existingLoopUpNumberRange.Where(e => e.Numbers.All(n => n.Customer == s.Customer));
 
                 // per loopup number range
-                existingLoopUpNumberRange
-                .Where(n => n.Numbers.All(c => c.Customer == s.Customer))
+                allCustomersNumberRange
                 .ToList()
                 .ForEach(e =>
                 {
@@ -214,7 +214,7 @@ namespace RibbonSBCRangeConverter
                                     {
                                         finalRange.Add(n);
                                     }
-                                }); ;
+                                });
                             }
                         });
                     }
@@ -235,19 +235,18 @@ namespace RibbonSBCRangeConverter
 
                 // verify the total numbers equal to translated sbc numbers
                 // note: this verify is just for testing purpose
-                var allCustomersNumber = existingLoopUpNumberRange.Where(e => e.Numbers.All(n => n.Customer == s.Customer));
-
-                if (RangesToNumbers(finalRange.Select(m => m.RibbonSbcRange).ToList(), numberOfDigits).Count != allCustomersNumber.SelectMany(a => a.Numbers).Count())
-                {
-                    throw new Exception("Unmatch");
-                }
+                VerifyRecalculation(finalRange, numberOfDigits, allCustomersNumberRange);
             });
         }
 
-        // TODO: Extract numbers that has not put in range
-        public List<int> GetUndefinedRange()
+        private void VerifyRecalculation(List<RibbonNumberRange> finalRange, int numberOfDigits, IEnumerable<LoopupNumberRange> allCustomersNumberRange)
         {
-            throw new NotImplementedException();
+            var allCustomerNumbers = allCustomersNumberRange.SelectMany(a => a.Numbers);
+            var allTranslatedRangeToNumbers = RangesToNumbers(finalRange.Select(m => m.RibbonSbcRange).ToList(), numberOfDigits);
+            if (allTranslatedRangeToNumbers.Count != allCustomerNumbers.Count())
+            {
+                throw new Exception("Unmatch");
+            }
         }
 
         /// <summary>
@@ -259,10 +258,10 @@ namespace RibbonSBCRangeConverter
         /// <param name="sbcRange"></param>
         /// <param name="numberOfDigits"></param>
         /// <returns></returns>
-        public Tuple<List<int>, List<int>> GetUnallocatedNumbers(List<int> existingNumbers, string sbcRange, int numberOfDigits)
+        public Tuple<List<uint>, List<uint>> GetUnallocatedNumbers(List<uint> existingNumbers, string sbcRange, int numberOfDigits)
         {
-            List<int> LeftPart = new List<int>();
-            List<int> RightPart = new List<int>();
+            List<uint> LeftPart = new List<uint>();
+            List<uint> RightPart = new List<uint>();
 
             var translatedNumbers = RangeToNumbers(sbcRange, numberOfDigits);
             if (translatedNumbers.Min() < existingNumbers.Min())
@@ -292,9 +291,9 @@ namespace RibbonSBCRangeConverter
             return Tuple.Create(LeftPart, RightPart);
         }
 
-        public int GetTotalUnallocatedNumbers(List<int> existingNumbers, string sbcRange, int numberOfDigits)
+        public uint GetTotalUnallocatedNumbers(List<uint> existingNumbers, string sbcRange, int numberOfDigits)
         {
-            int unallocatedNumbers = default;
+            uint unallocatedNumbers = default;
 
             var translatedNumbers = RangeToNumbers(sbcRange, numberOfDigits);
 
@@ -333,7 +332,7 @@ namespace RibbonSBCRangeConverter
         /// <param name="numberOfDigits"></param>
         /// <param name="inEfficientRange"></param>
         /// <returns></returns>
-        public bool IsEfficientRanges(List<int> existingNumbers, List<string> sbcRange, int numberOfDigits, out List<string> inEfficientRange)
+        public bool IsEfficientRanges(List<uint> existingNumbers, List<string> sbcRange, int numberOfDigits, out List<string> inEfficientRange)
         {
             bool isEfficient = true; ;
             inEfficientRange = new List<string>();
@@ -356,12 +355,12 @@ namespace RibbonSBCRangeConverter
         /// <param name="sbcRange"></param>
         /// <param name="numberOfDigits"></param>
         /// <returns></returns>
-        public List<int> RangeToNumbers(string sbcRange, int numberOfDigits)
+        public List<uint> RangeToNumbers(string sbcRange, int numberOfDigits)
         {
-            List<int> numbers = new List<int>();
+            List<uint> numbers = new List<uint>();
             var rangeLength = sbcRange.ToString().Length;
-            var degree = (int)Math.Pow(10, numberOfDigits - rangeLength);
-            var _number = int.Parse(sbcRange) * degree;
+            var degree = (uint)Math.Pow(10, numberOfDigits - rangeLength);
+            uint _number = uint.Parse(sbcRange) * degree;
             var _upperlimit = _number + (degree - 1);
             for (var y = _number; y <= _upperlimit; y++)
             {
@@ -377,9 +376,9 @@ namespace RibbonSBCRangeConverter
         /// <param name="sbcRange"></param>
         /// <param name="numberOfDigits"></param>
         /// <returns></returns>
-        public List<int> RangesToNumbers(List<string> sbcRange, int numberOfDigits)
+        public List<uint> RangesToNumbers(List<string> sbcRange, int numberOfDigits)
         {
-            List<int> numbers = new List<int>();
+            List<uint> numbers = new List<uint>();
             sbcRange.ForEach(r =>
             {
                 numbers.AddRange(RangeToNumbers(r, numberOfDigits));
