@@ -1,7 +1,10 @@
-﻿using System;
+﻿using NumberRangeConverter.Exceptions;
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace NumberRangeConverter
 {
@@ -12,7 +15,8 @@ namespace NumberRangeConverter
         /// </summary>
         /// <param name="existingSbcRange"></param>
         /// <param name="existingLoopUpNumberRange"></param>
-        public static void RecalculateRange(List<RibbonNumberRange> existingSbcRange, List<LoopupNumberRange> existingLoopUpNumberRange)
+        /// <param name="verifyAfterRecalculation">if true, there will extra step to translate back the final ribbon sbc and compare with the actual numbers to verify it's a correct ribbon sbc</param>
+        public static void RecalculateRange(List<RibbonNumberRange> existingSbcRange, List<LoopupNumberRange> existingLoopUpNumberRange, bool verifyAfterRecalculation = true)
         {
             // recalculate per customer
             var byCustomer = from p in existingSbcRange
@@ -23,112 +27,195 @@ namespace NumberRangeConverter
                                  SbcRanges = g.ToList(),
                              };
 
-            byCustomer.ToList().ForEach(s =>
+            Parallel.ForEach(byCustomer, new ParallelOptions { MaxDegreeOfParallelism = 5 }, s =>
             {
-                var finalRange = new List<RibbonNumberRange>();
+                List<RibbonNumberRange> finalRange = new List<RibbonNumberRange>();
                 var numberOfDigits = s.SbcRanges.First().NumberOfDigits;
                 var allCustomersNumberRange = existingLoopUpNumberRange.Where(e => e.Numbers.All(n => n.Customer == s.Customer));
+                var allCustomerNumbers = allCustomersNumberRange.SelectMany(a => a.Numbers);
 
-                // per loopup number range
-                allCustomersNumberRange
-                .ToList()
-                .ForEach(e =>
-                {
-                    List<string> sbcRanges;
-                    if (finalRange.Count == 0)
+                ConcurrentBag<RibbonNumberRange> inEfficientRangeAlreadyProcessed = new ConcurrentBag<RibbonNumberRange>();
+
+                // Iterate through all customer number range
+                // Unfortunately still can't figure out how to make it parallel, since finalRange matters for next iteration
+                // if it's parallel, the other thread may see incorrect value
+                allCustomersNumberRange.ToList().ForEach(e => {
+                    IEnumerable<RibbonNumberRange> currentSbcRange;// = new List<RibbonNumberRange>();
+                    if (finalRange.Count == 0) {
+                        currentSbcRange = s.SbcRanges.Select(n => new RibbonNumberRange
+                        {
+                            RibbonSbcRange = n.RibbonSbcRange,
+                            Customer = n.Customer,
+                            RangeStart = n.RangeStart,
+                            RangeEnd = n.RangeEnd,
+                            NumberOfDigits = n.NumberOfDigits
+                        }).ToList();
+                    } else {
+                        currentSbcRange = finalRange.Select(n => new RibbonNumberRange
+                        {
+                            RibbonSbcRange = n.RibbonSbcRange,
+                            Customer = n.Customer,
+                            RangeStart = n.RangeStart,
+                            RangeEnd = n.RangeEnd,
+                            Status = n.Status,
+                            NumberOfDigits = n.NumberOfDigits
+                        }).ToList();
+                    }
+
+                    var existingCustomerPhoneNumbers = e.Numbers.Where(n => n.Customer == s.Customer).Select(m => m.Number).ToList();
+
+                    // check the range efficiency on each iteration (only for the one that not checked yet)
+                    foreach(var csb in currentSbcRange.Where(cbc => cbc.Status == RangeStatus.Unset))
                     {
-                        sbcRanges = s.SbcRanges.Select(m => m.RibbonSbcRange).ToList();
+                        csb.Status = IsEfficientRange(existingCustomerPhoneNumbers, csb.RibbonSbcRange, numberOfDigits);
+                    }
+
+                    var validRanges = currentSbcRange.Where(c => c.Status == RangeStatus.Efficient).ToList();
+                    var invalidRanges = currentSbcRange.Except(validRanges);
+
+                    if (currentSbcRange.All(c => c.Status == RangeStatus.Efficient))
+                    {
+                        // it maybe all are efficient range, but there could be numbers that have no range associated
+                        var totalTranslatedRangeToNumbers = validRanges.Sum(f => f.Coverage.Count);
+                        var diff = existingCustomerPhoneNumbers.Count() - totalTranslatedRangeToNumbers;
+                        if (diff != 0)
+                        {
+                            if (diff > 1)
+                            {
+                                var maxFromTranslatedRanges = validRanges.SelectMany(v => v.Coverage).Max();
+                                var minFromTranslatedRanges = validRanges.SelectMany(v => v.Coverage).Min();
+                                if (maxFromTranslatedRanges < existingCustomerPhoneNumbers.Min()
+                                || minFromTranslatedRanges > existingCustomerPhoneNumbers.Max())
+                                {
+                                    // found set of numbers that have no range yet, then create new ones
+                                    var start = existingCustomerPhoneNumbers.Min();
+                                    var end = existingCustomerPhoneNumbers.Max();
+                                    var res = RangeToRibbonSBC(start.ToString(), end.ToString());
+
+                                    validRanges.AddRange(res.Select(r => new RibbonNumberRange
+                                    {
+                                        Customer = s.Customer,
+                                        RibbonSbcRange = r,
+                                        Status = RangeStatus.Efficient,
+                                        RangeStart = existingCustomerPhoneNumbers.Min(),
+                                        RangeEnd = existingCustomerPhoneNumbers.Max()
+                                    }));
+                                }
+                            }
+                            else
+                            {
+                                // this could be the end range, s just add it as is
+                                validRanges.Add(new RibbonNumberRange
+                                {
+                                    RibbonSbcRange = existingCustomerPhoneNumbers.Max().ToString(),
+                                    Status = RangeStatus.Efficient,
+                                    Customer = s.Customer,
+                                    RangeStart = existingCustomerPhoneNumbers.Max(),
+                                    RangeEnd = existingCustomerPhoneNumbers.Max()
+                                });
+                            }
+                        }
+                    }
+                    else if (validRanges.Count == 0){
+                        // if all invalid range, then just create new ones
+                        var rangeStart = existingCustomerPhoneNumbers.Min();
+                        var rangeEnd = existingCustomerPhoneNumbers.Max();
+                        var newRange = RangeToRibbonSBC(rangeStart.ToString(), rangeEnd.ToString());
+
+                        foreach (var n in newRange)
+                        {
+                            validRanges.Add(new RibbonNumberRange
+                            {
+                                Customer = s.Customer,
+                                RibbonSbcRange = n,
+                                RangeStart = rangeStart,
+                                RangeEnd = rangeEnd,
+                                Status = RangeStatus.Efficient
+                            });
+                        }
                     }
                     else
                     {
-                        sbcRanges = finalRange.Select(m => m.RibbonSbcRange).ToList();
-                    }
-
-                    var existingPhoneNumbers = e.Numbers.Where(n => n.Customer == s.Customer).Select(m => m.Number).ToList();
-                    // is there any inefficient ranges
-                    if (!IsEfficientRanges(existingPhoneNumbers, sbcRanges, numberOfDigits, out var inEfficientRange))
-                    {
-                        // TODO: remove that sbcRange or add to collection to be removed later
-
-                        // reconstruct new range from the inefficient range
-                        var validRange = s.SbcRanges.Where(s => !inEfficientRange.Any(i => s.RibbonSbcRange == i)).ToList();
-                        finalRange.AddRange(validRange);
-
-                        inEfficientRange.ForEach(e =>
+                        // adjust some of the invalid ranges
+                        foreach(var inv in invalidRanges.Where(inv => inv.Status == RangeStatus.InEfficient && !inEfficientRangeAlreadyProcessed.Contains(inv)))
                         {
-                            var newRange = new List<RibbonNumberRange>();
+                            var newRange = new List<string>();
 
-                            var totalUnallocatedNumbers = GetUnallocatedNumbers(existingPhoneNumbers, e, numberOfDigits);
+                            var totalUnallocatedNumbers = GetUnallocatedNumbers(existingCustomerPhoneNumbers, inv.RibbonSbcRange, numberOfDigits);
+
+                            // if there is unnecessary range below the bottom limit of the numbers, then create a proper range
                             if (totalUnallocatedNumbers.Item1.Count > 0)
                             {
-                                var rangeStart = existingPhoneNumbers.Min();
-                                var rangeEnd = validRange.First().Coverage.Min();
-                                newRange = RangeToRibbonSBC(rangeStart.ToString(), rangeEnd.ToString()).Select(n => new RibbonNumberRange
-                                {
-                                    Customer = s.Customer,
-                                    RibbonSbcRange = n,
-                                    RangeStart = rangeStart,
-                                    RangeEnd = rangeEnd
-                                })
-                                .ToList();
+                                var rangeStart = existingCustomerPhoneNumbers.Min();
+                                var rangeEnd = validRanges.SelectMany(x => x.Coverage).Min();
+                                newRange = RangeToRibbonSBC(rangeStart.ToString(), rangeEnd.ToString());
 
-                                newRange.ForEach(n =>
+                                foreach (var n in newRange)
                                 {
-                                    if (!finalRange.Any(f => n.RibbonSbcRange.StartsWith(f.RibbonSbcRange)))
+                                    if (!validRanges.Any(f => n.StartsWith(f.RibbonSbcRange)))
                                     {
-                                        finalRange.Add(n);
+                                        validRanges.Add(new RibbonNumberRange
+                                        {
+                                            Customer = s.Customer,
+                                            RibbonSbcRange = n,
+                                            RangeStart = rangeStart,
+                                            RangeEnd = rangeEnd,
+                                            Status = RangeStatus.Efficient
+                                        });
                                     }
-                                });
+                                }
                             }
 
+                            // if there is unnecessary range above the upper limit of the numbers, then create a proper range
                             if (totalUnallocatedNumbers.Item2.Count > 0)
                             {
-                                var rangeStart = validRange.Last().Coverage.Min();
-                                var rangeEnd = existingPhoneNumbers.Max();
-                                newRange = RangeToRibbonSBC(rangeStart.ToString(), rangeEnd.ToString()).Select(n => new RibbonNumberRange
-                                {
-                                    Customer = s.Customer,
-                                    RibbonSbcRange = n,
-                                    RangeStart = rangeStart,
-                                    RangeEnd = rangeEnd
-                                })
-                                .ToList();
+                                var rangeStart = validRanges.SelectMany(x => x.Coverage).Max();
+                                var rangeEnd = existingCustomerPhoneNumbers.Max();
+                                newRange = RangeToRibbonSBC(rangeStart.ToString(), rangeEnd.ToString());
 
-                                newRange.ForEach(n =>
+                                foreach (var n in newRange)
                                 {
-                                    if (!finalRange.Any(f => n.RibbonSbcRange.StartsWith(f.RibbonSbcRange)))
+                                    if (!validRanges.Any(f => n.StartsWith(f.RibbonSbcRange)))
                                     {
-                                        finalRange.Add(n);
+                                        validRanges.Add(new RibbonNumberRange
+                                        {
+                                            Customer = s.Customer,
+                                            RibbonSbcRange = n,
+                                            RangeStart = rangeStart,
+                                            RangeEnd = rangeEnd,
+                                            Status = RangeStatus.Efficient
+                                        });
                                     }
-                                });
+                                }
                             }
-                        });
+
+                            inEfficientRangeAlreadyProcessed.Add(inv);
+                        }
                     }
-                    else
-                    {
-                        // it maybe an efficient range, but there could be numbers that have no range associated
-                        // try to generate the range
-                        var res = RangeToRibbonSBC(existingPhoneNumbers.Min().ToString(), existingPhoneNumbers.Max().ToString());
-                        finalRange.AddRange(res.Select(r => new RibbonNumberRange
-                        {
-                            Customer = s.Customer,
-                            RibbonSbcRange = r,
-                            RangeStart = existingPhoneNumbers.Min(),
-                            RangeEnd = existingPhoneNumbers.Max()
-                        }));
-                    }
+
+                    finalRange = validRanges;
                 });
 
-                // verify the total numbers equal to translated sbc numbers
-                // note: this verify is just for testing purpose
-                VerifyRecalculation(finalRange, allCustomersNumberRange);
+                if (allCustomerNumbers.Any())
+                {
+                    if (verifyAfterRecalculation)
+                    {
+                        // verify the total numbers equal to translated sbc numbers
+                        // note: this verify is just for testing purpose
+                        VerifyRecalculation(finalRange.ToList(), allCustomerNumbers);
+                    }
+                }
+                else
+                {
+                    // this customer have no number, shall we just remove the unused range??
+                }
             });
         }
 
         /// <summary>
         /// Get unallocated numbers to range that could be bigger than it should
-        /// The left part if the range unnecessarily cover number below the min number
-        /// The right part if the range unnecessarily cover number above the max number
+        /// The left part if the range unnecessarily include number below the min number
+        /// The right part if the range unnecessarily include number above the max number
         /// </summary>
         /// <param name="existingNumbers"></param>
         /// <param name="sbcRange"></param>
@@ -173,10 +260,16 @@ namespace NumberRangeConverter
 
             var translatedNumbers = RangeToNumbers(sbcRange, numberOfDigits);
 
+            if (translatedNumbers.Count == 1 && translatedNumbers.First() < existingNumbers.Max())
+            {
+                // it's considered not efficient range, cause full digit and not last number
+                throw new NotRangeException();
+            }
+
             if (translatedNumbers.Max() < existingNumbers.Min() || translatedNumbers.Min() > existingNumbers.Max())
             {
                 // out of range, skip
-                return default;
+                throw new OutOfRangeException();
             }
 
             if (translatedNumbers.Min() < existingNumbers.Min())
@@ -200,28 +293,30 @@ namespace NumberRangeConverter
             return unallocatedNumbers;
         }
 
-        /// <summary>
-        /// Check if the range is an effecient range by measuring number different by the order of log10
-        /// If it's more than 1, considered as ineffecient
-        /// CAUTION: This does not include where there is still uncovered numbers by the given sbcRange
-        /// </summary>
-        /// <param name="existingNumbers"></param>
-        /// <param name="sbcRange"></param>
-        /// <param name="numberOfDigits"></param>
-        /// <param name="inEfficientRange"></param>
-        /// <returns></returns>
-        public static bool IsEfficientRanges(List<uint> existingNumbers, List<string> sbcRange, int numberOfDigits, out List<string> inEfficientRange)
+        public static RangeStatus IsEfficientRange(List<uint> existingNumbers, string sbcRange, int numberOfDigits)
         {
-            bool isEfficient = true; ;
-            inEfficientRange = new List<string>();
-            foreach (var s in sbcRange)
+            RangeStatus isEfficient = default;
+            try
             {
-                var totalUnallocatedNumbers = GetTotalUnallocatedNumbers(existingNumbers, s, numberOfDigits);
+                var totalUnallocatedNumbers = GetTotalUnallocatedNumbers(existingNumbers, sbcRange, numberOfDigits);
                 if (totalUnallocatedNumbers > 0)
                 {
-                    isEfficient = false;
-                    inEfficientRange.Add(s);
+                    // if the range cover unnessarily numbers, categorize as inefficient
+                    isEfficient = RangeStatus.InEfficient;
                 }
+                else
+                {
+                    isEfficient = RangeStatus.Efficient;
+                }
+            }
+            catch (NotRangeException)
+            {
+                // if it's not a range, categorize as inefficient
+                isEfficient = RangeStatus.InEfficient;
+            }
+            catch (OutOfRangeException)
+            {
+                isEfficient = RangeStatus.OutOfRange;
             }
 
             return isEfficient;
@@ -239,6 +334,7 @@ namespace NumberRangeConverter
             var degree = (uint)Math.Pow(10, numberOfDigits - sbcRange.Length);
             uint _number = uint.Parse(sbcRange) * degree;
             var _upperlimit = _number + (degree - 1);
+
             for (var y = _number; y <= _upperlimit; y++)
             {
                 numbers.Add(y);
@@ -256,10 +352,15 @@ namespace NumberRangeConverter
         public static List<uint> RangesToNumbers(List<string> sbcRange, int numberOfDigits)
         {
             List<uint> numbers = new List<uint>();
-            sbcRange.ForEach(r =>
+
+            foreach (var r in sbcRange)
             {
-                numbers.AddRange(RangeToNumbers(r, numberOfDigits));
-            });
+                var _rangeToNumberResult = RangeToNumbers(r, numberOfDigits);
+                foreach (var o in _rangeToNumberResult)
+                {
+                    numbers.Add(o);
+                }
+            }
 
             return numbers;
         }
@@ -377,15 +478,14 @@ namespace NumberRangeConverter
             return finalRanges;
         }
 
-        private static void VerifyRecalculation(List<RibbonNumberRange> finalRange, IEnumerable<LoopupNumberRange> allCustomersNumberRange)
+        private static void VerifyRecalculation(List<RibbonNumberRange> finalRange, IEnumerable<PhoneNumber> allCustomerNumbers)
         {
-            var allCustomerNumbers = allCustomersNumberRange.SelectMany(a => a.Numbers);
             var allTranslatedRangeToNumbers = finalRange.Sum(f => f.Coverage.Count);
-            if (allTranslatedRangeToNumbers != allCustomerNumbers.Count())
+            if (finalRange.All(f => f.Status == RangeStatus.Efficient)
+                && allTranslatedRangeToNumbers != allCustomerNumbers.Count())
             {
                 throw new Exception("Unmatch");
             }
         }
-
     }
 }

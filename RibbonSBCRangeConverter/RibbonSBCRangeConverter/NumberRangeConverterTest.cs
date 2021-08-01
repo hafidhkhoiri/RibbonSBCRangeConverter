@@ -4,6 +4,7 @@ using Xunit;
 using System.Linq;
 using System.Text;
 using NumberRangeConverter;
+using System.Collections.Concurrent;
 
 namespace NumberRangeConverterTest
 {
@@ -59,18 +60,18 @@ namespace NumberRangeConverterTest
                 numbers.Add(m);
             }
 
-            var sbcRange = new List<string> { "123", "1234" };
+            var sbcRange = new List<string> { "123", "1234", "999" };
             var numberOfDigits = rangeStart.ToString().Length;
             var efficientSbcRange = new List<string> { "1234", "123450" };
 
-            bool isEfficientRange = NumberRangeHelper.IsEfficientRanges(numbers, sbcRange, numberOfDigits, out List<string> inEfficientRange);
-            bool isEfficientRange2 = NumberRangeHelper.IsEfficientRanges(numbers, efficientSbcRange, numberOfDigits, out List<string> inEfficientRange2);
+            var checkResult = NumberRangeHelper.IsEfficientRange(numbers, sbcRange[0], numberOfDigits);
+            Assert.Equal(RangeStatus.InEfficient, checkResult);
 
-            Assert.False(isEfficientRange);
-            Assert.Equal(1, inEfficientRange.Count);
+            checkResult = NumberRangeHelper.IsEfficientRange(numbers, sbcRange[1], numberOfDigits);
+            Assert.Equal(RangeStatus.Efficient, checkResult);
 
-            Assert.True(isEfficientRange2);
-            Assert.Empty(inEfficientRange2);
+            checkResult = NumberRangeHelper.IsEfficientRange(numbers, sbcRange[2], numberOfDigits);
+            Assert.Equal(RangeStatus.OutOfRange, checkResult);
         }
 
         [Fact]
@@ -98,20 +99,19 @@ namespace NumberRangeConverterTest
 
             loopupNumberRange.Add(new LoopupNumberRange
             {
-                Numbers = NumberHelper.SetNumbers(123740, 123950, "Ardall")
-            });
-
-            // Leo's range contain multiple range
-            // but the second range have no association with any Ribbon SBC range
-            loopupNumberRange.Add(new LoopupNumberRange
-            {
-                Numbers = NumberHelper.SetNumbers(223450, 223900, "Leo")
+                Numbers = NumberHelper.SetNumbers(126740, 126950, "Ardall")
             });
 
             loopupNumberRange.Add(new LoopupNumberRange
             {
-                Numbers = NumberHelper.SetNumbers(1415251000, 1415990201, "Leo")
+                Numbers = NumberHelper.SetNumbers(923450, 923460, "Leo")
             });
+
+            loopupNumberRange.Add(new LoopupNumberRange
+            {
+                Numbers = NumberHelper.SetNumbers(191340, 192340, "Leo")
+            });
+
 
             var sbcRange = new List<RibbonNumberRange> {
                 new RibbonNumberRange{
@@ -120,20 +120,29 @@ namespace NumberRangeConverterTest
                     NumberOfDigits = 6,
                 },
                 new RibbonNumberRange{
-                    RibbonSbcRange = "12345",
+                    RibbonSbcRange = "123458",
                     Customer = "Ardall",
                     NumberOfDigits = 6,
                 },
                 new RibbonNumberRange{
-                    RibbonSbcRange = "22345",
+                    RibbonSbcRange = "13345",
+                    Customer = "Ardall",
+                    NumberOfDigits = 6,
+                },
+                new RibbonNumberRange{
+                    RibbonSbcRange = "92345",
                     Customer = "Leo",
+                    NumberOfDigits = 6,
+                },
+                new RibbonNumberRange{
+                    RibbonSbcRange = "22345",
+                    Customer = "Range without numbers",
                     NumberOfDigits = 6,
                 },
             };
 
             // Recalculate the ranges so we get the proper SBC ranges
             // if there is no expcetion, meaning the final ranges is created succesfully and still cover all of users ranges
-            NumberRangeHelper.RecalculateRange(sbcRange, loopupNumberRange);
             var exception = Record.Exception(() => NumberRangeHelper.RecalculateRange(sbcRange, loopupNumberRange));
             Assert.Null(exception);
         }

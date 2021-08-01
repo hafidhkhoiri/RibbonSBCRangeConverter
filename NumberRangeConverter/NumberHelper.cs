@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
 
 namespace NumberRangeConverter
 {
@@ -9,7 +7,6 @@ namespace NumberRangeConverter
         public static List<PhoneNumber> SetNumbers(uint RangeStart, uint RangeEnd, string Customer)
         {
             List<PhoneNumber> result = new List<PhoneNumber>();
-
             for (var m = RangeStart; m <= RangeEnd; m++)
             {
                 result.Add(new PhoneNumber

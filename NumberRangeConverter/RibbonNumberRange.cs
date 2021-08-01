@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace NumberRangeConverter
 {
     public class RibbonNumberRange
     {
         public string RibbonSbcRange { get; set; }
+
+        public RangeStatus Status { get; set; }
 
         public string Customer { get; set; }
 
@@ -63,6 +64,7 @@ namespace NumberRangeConverter
             var degree = (uint)Math.Pow(10, NumberOfDigits - rangeLength);
             var _number = uint.Parse(RibbonSbcRange) * degree;
             var _upperlimit = _number + (degree - 1);
+
             for (var y = _number; y <= _upperlimit; y++)
             {
                 numbers.Add(y);
