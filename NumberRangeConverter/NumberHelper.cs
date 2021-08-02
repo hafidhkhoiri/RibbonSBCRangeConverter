@@ -1,13 +1,14 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace NumberRangeConverter
 {
     public class NumberHelper
     {
-        public static List<PhoneNumber> SetNumbers(uint RangeStart, uint RangeEnd, string Customer)
+        public static List<PhoneNumber> SetNumbers(UInt64 RangeStart, UInt64 RangeEnd, string Customer)
         {
             List<PhoneNumber> result = new List<PhoneNumber>();
-            for (var m = RangeStart; m <= RangeEnd; m++)
+            for (UInt64 m = RangeStart; m <= RangeEnd; m++)
             {
                 result.Add(new PhoneNumber
                 {

@@ -1,8 +1,10 @@
-﻿namespace NumberRangeConverter
+﻿using System;
+
+namespace NumberRangeConverter
 {
     public class PhoneNumber
     {
-        public uint Number { get; set; }
+        public UInt64 Number { get; set; }
 
         public string Customer { get; set; }
     }

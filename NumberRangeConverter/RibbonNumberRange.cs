@@ -25,9 +25,9 @@ namespace NumberRangeConverter
             }
         }
 
-        private List<uint> _coverage = null;
+        private List<UInt64> _coverage = null;
 
-        public List<uint> Coverage
+        public List<UInt64> Coverage
         {
             get
             {
@@ -39,30 +39,20 @@ namespace NumberRangeConverter
             }
         }
 
-        public uint RangeStart { get; set; }
+        public UInt64 RangeStart { get; set; }
 
-        public uint RangeEnd { get; set; }
-
-        public List<uint> Numbers { get; private set; }
-
-        public void SetNumbers()
-        {
-            for (var m = RangeStart; m <= RangeEnd; m++)
-            {
-                Numbers.Add(m);
-            }
-        }
+        public UInt64 RangeEnd { get; set; }
 
         /// <summary>
         /// Helper to translate range to numbers, need to improve performance
         /// </summary>
         /// <returns></returns>
-        public List<uint> RangeToNumbers()
+        public List<UInt64> RangeToNumbers()
         {
-            List<uint> numbers = new List<uint>();
+            List<UInt64> numbers = new List<UInt64>();
             var rangeLength = RibbonSbcRange.Length;
-            var degree = (uint)Math.Pow(10, NumberOfDigits - rangeLength);
-            var _number = uint.Parse(RibbonSbcRange) * degree;
+            var degree = (UInt64)Math.Pow(10, NumberOfDigits - rangeLength);
+            var _number = UInt64.Parse(RibbonSbcRange) * degree;
             var _upperlimit = _number + (degree - 1);
 
             for (var y = _number; y <= _upperlimit; y++)

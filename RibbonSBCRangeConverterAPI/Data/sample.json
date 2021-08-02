@@ -1,0 +1,41 @@
+{
+    "numbersRanges": [
+        {
+            "customer": "Ardall",
+            "rangeStart": 12345678000,
+            "rangeEnd": 12345679000
+        },
+        {
+            "customer": "Ardall",
+            "rangeStart": 12345689000,
+            "rangeEnd": 12345689500
+        },
+        {
+            "customer": "Ardall",
+            "rangeStart": 12355689100,
+            "rangeEnd": 12355689500
+        },
+        {
+            "customer": "Leo",
+            "rangeStart": 12355789100,
+            "rangeEnd": 12355789190
+        }
+    ],
+    "sbcRanges": [
+        {
+            "ribbonSbcRange": "123",
+            "customer": "Ardall",
+            "numberOfDigits": 11
+        },
+        {
+            "ribbonSbcRange": "1234",
+            "customer": "Ardall",
+            "numberOfDigits": 11
+        },
+        {
+            "ribbonSbcRange": "123557",
+            "customer": "Leo",
+            "numberOfDigits": 11
+        }
+    ]
+}

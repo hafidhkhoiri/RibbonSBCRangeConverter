@@ -221,10 +221,10 @@ namespace NumberRangeConverter
         /// <param name="sbcRange"></param>
         /// <param name="numberOfDigits"></param>
         /// <returns></returns>
-        public static Tuple<List<uint>, List<uint>> GetUnallocatedNumbers(List<uint> existingNumbers, string sbcRange, int numberOfDigits)
+        public static Tuple<List<UInt64>, List<UInt64>> GetUnallocatedNumbers(List<UInt64> existingNumbers, string sbcRange, int numberOfDigits)
         {
-            List<uint> LeftPart = new List<uint>();
-            List<uint> RightPart = new List<uint>();
+            List<UInt64> LeftPart = new List<UInt64>();
+            List<UInt64> RightPart = new List<UInt64>();
 
             var translatedNumbers = RangeToNumbers(sbcRange, numberOfDigits);
             if (translatedNumbers.Min() < existingNumbers.Min())
@@ -254,9 +254,9 @@ namespace NumberRangeConverter
             return Tuple.Create(LeftPart, RightPart);
         }
 
-        public static uint GetTotalUnallocatedNumbers(List<uint> existingNumbers, string sbcRange, int numberOfDigits)
+        public static UInt64 GetTotalUnallocatedNumbers(List<UInt64> existingNumbers, string sbcRange, int numberOfDigits)
         {
-            uint unallocatedNumbers = default;
+            UInt64 unallocatedNumbers = default;
 
             var translatedNumbers = RangeToNumbers(sbcRange, numberOfDigits);
 
@@ -293,7 +293,7 @@ namespace NumberRangeConverter
             return unallocatedNumbers;
         }
 
-        public static RangeStatus IsEfficientRange(List<uint> existingNumbers, string sbcRange, int numberOfDigits)
+        public static RangeStatus IsEfficientRange(List<UInt64> existingNumbers, string sbcRange, int numberOfDigits)
         {
             RangeStatus isEfficient = default;
             try
@@ -328,11 +328,11 @@ namespace NumberRangeConverter
         /// <param name="sbcRange"></param>
         /// <param name="numberOfDigits"></param>
         /// <returns></returns>
-        public static List<uint> RangeToNumbers(string sbcRange, int numberOfDigits)
+        public static List<UInt64> RangeToNumbers(string sbcRange, int numberOfDigits)
         {
-            List<uint> numbers = new List<uint>();
-            var degree = (uint)Math.Pow(10, numberOfDigits - sbcRange.Length);
-            uint _number = uint.Parse(sbcRange) * degree;
+            List<UInt64> numbers = new List<UInt64>();
+            var degree = (UInt64)Math.Pow(10, numberOfDigits - sbcRange.Length);
+            UInt64 _number = UInt64.Parse(sbcRange) * degree;
             var _upperlimit = _number + (degree - 1);
 
             for (var y = _number; y <= _upperlimit; y++)
@@ -349,9 +349,9 @@ namespace NumberRangeConverter
         /// <param name="sbcRange"></param>
         /// <param name="numberOfDigits"></param>
         /// <returns></returns>
-        public static List<uint> RangesToNumbers(List<string> sbcRange, int numberOfDigits)
+        public static List<UInt64> RangesToNumbers(List<string> sbcRange, int numberOfDigits)
         {
-            List<uint> numbers = new List<uint>();
+            List<UInt64> numbers = new List<UInt64>();
 
             foreach (var r in sbcRange)
             {

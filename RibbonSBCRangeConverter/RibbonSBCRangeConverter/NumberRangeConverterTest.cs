@@ -51,9 +51,9 @@ namespace NumberRangeConverterTest
         [Fact]
         public void CanDetectInEfficientRange()
         {
-            List<uint> numbers = new List<uint>();
-            uint rangeStart = 123400;
-            uint rangeEnd = 123500;
+            List<UInt64> numbers = new List<UInt64>();
+            UInt64 rangeStart = 123400;
+            UInt64 rangeEnd = 123500;
 
             for (var m = rangeStart; m <= rangeEnd; m++)
             {
