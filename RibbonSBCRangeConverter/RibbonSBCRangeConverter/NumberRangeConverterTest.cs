@@ -154,7 +154,6 @@ namespace NumberRangeConverterTest
 
             var loopupNumberRange = new List<LoopupNumberRange>();
 
-            // unassigned numbers
             loopupNumberRange.Add(new LoopupNumberRange
             {
                 Numbers = NumberHelper.SetNumbers(123450, 123459, "Ardall")
@@ -188,7 +187,6 @@ namespace NumberRangeConverterTest
 
             var loopupNumberRange = new List<LoopupNumberRange>();
 
-            // unassigned numbers
             loopupNumberRange.Add(new LoopupNumberRange
             {
                 Numbers = NumberHelper.SetNumbers(123450, 123460, "Ardall")
