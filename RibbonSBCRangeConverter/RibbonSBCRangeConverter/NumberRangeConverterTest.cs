@@ -146,5 +146,77 @@ namespace NumberRangeConverterTest
             var exception = Record.Exception(() => NumberRangeHelper.RecalculateRange(sbcRange, loopupNumberRange));
             Assert.Null(exception);
         }
+
+        [Fact]
+        public void addNewNumberShouldRecalculateRangeCorrectly()
+        {
+            var numberOfDigits = 6;
+
+            var loopupNumberRange = new List<LoopupNumberRange>();
+
+            // unassigned numbers
+            loopupNumberRange.Add(new LoopupNumberRange
+            {
+                Numbers = NumberHelper.SetNumbers(123450, 123459, "Ardall")
+            });
+
+            var sbcRanges = new List<RibbonNumberRange> {
+                new RibbonNumberRange{
+                    RibbonSbcRange = "12345",
+                    Customer = "Ardall",
+                    NumberOfDigits = numberOfDigits,
+                },
+            };
+
+            // add 1 number
+            loopupNumberRange.First().Numbers.Add(new PhoneNumber
+            {
+                Customer = "Ardall",
+                Number = 123460
+            });
+
+            var res = NumberRangeHelper.RecalculateRange(sbcRanges, loopupNumberRange, MaxDegreeOfParallelism: 1);
+            var ardallNewRange = res.FirstOrDefault(c => c.Customer == "Ardall").RibbonNumberRanges.Select(r => r.RibbonSbcRange).ToList();
+
+            Assert.Equal(new List<string> { "12345", "123460" }, ardallNewRange);
+        }
+
+        [Fact]
+        public void removeNumberShouldRecalculateRangeCorrectly()
+        {
+            var numberOfDigits = 6;
+
+            var loopupNumberRange = new List<LoopupNumberRange>();
+
+            // unassigned numbers
+            loopupNumberRange.Add(new LoopupNumberRange
+            {
+                Numbers = NumberHelper.SetNumbers(123450, 123460, "Ardall")
+            });
+
+            var sbcRanges = new List<RibbonNumberRange> {
+                new RibbonNumberRange{
+                    RibbonSbcRange = "12345",
+                    Customer = "Ardall",
+                    NumberOfDigits = numberOfDigits,
+                },
+                new RibbonNumberRange{
+                    RibbonSbcRange = "123460",
+                    Customer = "Ardall",
+                    NumberOfDigits = numberOfDigits,
+                },
+            };
+
+            // remove 1 number
+            foreach(var c in loopupNumberRange)
+            {
+                c.Numbers = c.Numbers.TakeWhile(n => n.Number != 123460).ToList();
+            }
+
+            var res = NumberRangeHelper.RecalculateRange(sbcRanges, loopupNumberRange, MaxDegreeOfParallelism: 1);
+            var ardallNewRange = res.FirstOrDefault(c => c.Customer == "Ardall").RibbonNumberRanges.Select(r => r.RibbonSbcRange).ToList();
+
+            Assert.Equal(new List<string> { "12345" }, ardallNewRange);
+        }
     }
 }

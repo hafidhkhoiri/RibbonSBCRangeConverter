@@ -1,151 +1,156 @@
 <template>
-  <v-container>
-    <v-row class="text-center">
-      <v-col cols="12">
-        <v-img
-          :src="require('../assets/logo.svg')"
-          class="my-3"
-          contain
-          height="200"
-        />
-      </v-col>
+  <v-card
+    class="mx-auto"
+  >
+    <v-row align="center">
+        <v-col
+          class="text-h6"
+          cols="12"
+          md="2"
+          sm="12"
+        >
+          <v-avatar color="red" size="100%" height="140px" tile>
+            <span class="white--text text-h5">EP</span>
+          </v-avatar>
+          <v-list-item two-line>
+            <v-list-item-content>
+              <v-list-item-title class="text-h6">
+                Errai Pasifik
+              </v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
+        </v-col>
+        <v-col
+          class="text-h6"
+          cols="10"
+          md="10"
+          sm="12"
+        >
+               <v-list-item>
+                <v-list-item-content>
+                  <v-list-item-title  class="text-h5 mb-1">15000</v-list-item-title>
+                  <v-list-item-subtitle>Total phone numbers</v-list-item-subtitle>
+                </v-list-item-content>
+                <v-list-item-content>
+                  <v-list-item-title  class="text-h5 mb-1">2</v-list-item-title>
+                  <v-list-item-subtitle>Total Suppliers</v-list-item-subtitle>
+                </v-list-item-content>
+                <v-list-item-content>
+                  <v-list-item-title  class="text-h5 mb-1">2021-08-09</v-list-item-title>
+                  <v-list-item-subtitle>Last updated</v-list-item-subtitle>
+                </v-list-item-content>
+              </v-list-item>
+              
 
-      <v-col class="mb-4">
-        <h1 class="display-2 font-weight-bold mb-3">
-          Welcome to Vuetify
-        </h1>
-
-        <p class="subheading font-weight-regular">
-          For help and collaboration with other Vuetify developers,
-          <br>please join our online
-          <a
-            href="https://community.vuetifyjs.com"
-            target="_blank"
-          >Discord Community</a>
-        </p>
-      </v-col>
-
-      <v-col
-        class="mb-5"
-        cols="12"
+      <v-card-actions>
+      <v-btn
+        outlined
+        color="primary"
       >
-        <h2 class="headline font-weight-bold mb-3">
-          What's next?
-        </h2>
+        Upload numbers from CSV
+      </v-btn>
+    </v-card-actions>
 
-        <v-row justify="center">
-          <a
-            v-for="(next, i) in whatsNext"
-            :key="i"
-            :href="next.href"
-            class="subheading mx-3"
-            target="_blank"
-          >
-            {{ next.text }}
-          </a>
-        </v-row>
-      </v-col>
+              <v-divider></v-divider>
+              <v-simple-table dense>
+                <template v-slot:default>
+                  <thead>
+                    <tr>
+                      <th class="text-left">
+                        Phone Numbers
+                      </th>
+                      <th class="text-left">
+                        Status
+                      </th>
+                      <th class="text-left">
+                        Supplier
+                      </th>
+                      <th class="text-left">
+                        Sync Progress
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="item in numberRanges"
+                      :key="item.name"
+                    >
+                      <td>{{ item.range }}</td>
+                      <td>
+                          <v-chip
+                              small
+                              :color="getColor(item.status)"
+                              outlined
+                          >
+                              {{ item.status }}
+                          </v-chip>
+                      </td>
+                      <td>{{ item.supplier }}</td>
+                      <td>
+                        <v-progress-linear
+                          :value="item.syncProgress"
+                          striped
+                          color="green"
+                          height="20"
+                          disabled
+                        >
+                          <strong>{{ Math.ceil(item.syncProgress) }}%</strong>
+                        </v-progress-linear>
 
-      <v-col
-        class="mb-5"
-        cols="12"
-      >
-        <h2 class="headline font-weight-bold mb-3">
-          Important Links
-        </h2>
-
-        <v-row justify="center">
-          <a
-            v-for="(link, i) in importantLinks"
-            :key="i"
-            :href="link.href"
-            class="subheading mx-3"
-            target="_blank"
-          >
-            {{ link.text }}
-          </a>
-        </v-row>
-      </v-col>
-
-      <v-col
-        class="mb-5"
-        cols="12"
-      >
-        <h2 class="headline font-weight-bold mb-3">
-          Ecosystem
-        </h2>
-
-        <v-row justify="center">
-          <a
-            v-for="(eco, i) in ecosystem"
-            :key="i"
-            :href="eco.href"
-            class="subheading mx-3"
-            target="_blank"
-          >
-            {{ eco.text }}
-          </a>
-        </v-row>
-      </v-col>
-    </v-row>
-  </v-container>
+                      </td>
+                    </tr>
+                  </tbody>
+                </template>
+              </v-simple-table>
+              
+        </v-col>
+      </v-row>
+  </v-card>
 </template>
 
 <script>
   export default {
-    name: 'HelloWorld',
-
-    data: () => ({
-      ecosystem: [
-        {
-          text: 'vuetify-loader',
-          href: 'https://github.com/vuetifyjs/vuetify-loader',
-        },
-        {
-          text: 'github',
-          href: 'https://github.com/vuetifyjs/vuetify',
-        },
-        {
-          text: 'awesome-vuetify',
-          href: 'https://github.com/vuetifyjs/awesome-vuetify',
-        },
-      ],
-      importantLinks: [
-        {
-          text: 'Documentation',
-          href: 'https://vuetifyjs.com',
-        },
-        {
-          text: 'Chat',
-          href: 'https://community.vuetifyjs.com',
-        },
-        {
-          text: 'Made with Vuetify',
-          href: 'https://madewithvuejs.com/vuetify',
-        },
-        {
-          text: 'Twitter',
-          href: 'https://twitter.com/vuetifyjs',
-        },
-        {
-          text: 'Articles',
-          href: 'https://medium.com/vuetify',
-        },
-      ],
-      whatsNext: [
-        {
-          text: 'Explore components',
-          href: 'https://vuetifyjs.com/components/api-explorer',
-        },
-        {
-          text: 'Select a layout',
-          href: 'https://vuetifyjs.com/getting-started/pre-made-layouts',
-        },
-        {
-          text: 'Frequently Asked Questions',
-          href: 'https://vuetifyjs.com/getting-started/frequently-asked-questions',
-        },
-      ],
-    }),
+    data () {
+      return {
+        labels: ['SU', 'MO', 'TU', 'WED', 'TH', 'FR', 'SA'],
+        time: 0,
+        forecast: [
+          { day: 'Tuesday', icon: 'mdi-white-balance-sunny', temp: '24\xB0/12\xB0' },
+          { day: 'Wednesday', icon: 'mdi-white-balance-sunny', temp: '22\xB0/14\xB0' },
+          { day: 'Thursday', icon: 'mdi-cloud', temp: '25\xB0/15\xB0' },
+        ],
+        numberRanges: [
+          {
+            range: '628231268449 - 628231270000',
+            status: "Active",
+            supplier: "Telkomsel",
+            syncProgress: 19
+          },
+          {
+            range: '128231268449 - 128231270000',
+            status: "Inactive",
+            supplier: "VZ",
+            syncProgress: 0
+          },
+          {
+            range: '128201268449 - 128131270000',
+            status: "Active",
+            supplier: "Telkomsel",
+            syncProgress: 55
+          },
+          {
+            range: '428201268429 - 438131270000',
+            status: "Active",
+            supplier: "O2",
+            syncProgress: 100
+          },
+        ],
+      }
+    },
+    methods:{
+      getColor(status){
+        return status == 'Active' ? 'green' : 'red';
+      }
+    }
   }
 </script>

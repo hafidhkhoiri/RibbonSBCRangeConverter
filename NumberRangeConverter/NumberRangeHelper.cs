@@ -16,8 +16,10 @@ namespace NumberRangeConverter
         /// <param name="existingSbcRange"></param>
         /// <param name="existingLoopUpNumberRange"></param>
         /// <param name="verifyAfterRecalculation">if true, there will extra step to translate back the final ribbon sbc and compare with the actual numbers to verify it's a correct ribbon sbc</param>
-        public static void RecalculateRange(List<RibbonNumberRange> existingSbcRange, List<LoopupNumberRange> existingLoopUpNumberRange, bool verifyAfterRecalculation = true)
+        public static List<RecalculationResult> RecalculateRange(List<RibbonNumberRange> existingSbcRange, List<LoopupNumberRange> existingLoopUpNumberRange, bool verifyAfterRecalculation = true, int MaxDegreeOfParallelism = 5)
         {
+            var result = new List<RecalculationResult>();
+
             // recalculate per customer
             var byCustomer = from p in existingSbcRange
                              group p by p.Customer into g
@@ -27,7 +29,7 @@ namespace NumberRangeConverter
                                  SbcRanges = g.ToList(),
                              };
 
-            Parallel.ForEach(byCustomer, new ParallelOptions { MaxDegreeOfParallelism = 5 }, s =>
+            Parallel.ForEach(byCustomer, new ParallelOptions { MaxDegreeOfParallelism = MaxDegreeOfParallelism }, s =>
             {
                 List<RibbonNumberRange> finalRange = new List<RibbonNumberRange>();
                 var numberOfDigits = s.SbcRanges.First().NumberOfDigits;
@@ -209,7 +211,15 @@ namespace NumberRangeConverter
                 {
                     // this customer have no number, shall we just remove the unused range??
                 }
+
+                result.Add(new RecalculationResult
+                {
+                    Customer = s.Customer,
+                    RibbonNumberRanges = finalRange
+                });
             });
+
+            return result;
         }
 
         /// <summary>
