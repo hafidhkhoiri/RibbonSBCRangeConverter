@@ -211,6 +211,7 @@ namespace NumberRangeConverterTest
                 c.Numbers = c.Numbers.TakeWhile(n => n.Number != 123460).ToList();
             }
 
+            // set maxDegreeOfParalleism to 1 so we can evaluate correctly
             var res = NumberRangeHelper.RecalculateRange(sbcRanges, loopupNumberRange, MaxDegreeOfParallelism: 1);
             var ardallNewRange = res.FirstOrDefault(c => c.Customer == "Ardall").RibbonNumberRanges.Select(r => r.RibbonSbcRange).ToList();
 

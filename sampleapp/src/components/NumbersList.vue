@@ -192,16 +192,17 @@
                 ></v-text-field>
                 </v-card-title>
                 
-                <v-data-table
+                <v-data-table  v-model="selectedItemsx"
                 show-select
                 dense
                 :headers="fakeTable.headers"
-                :items="fakeTable.desserts"
+                :items="fakes"
                 :search="search"
                 group-by="fakeTable.range"
                 show-group-by
                 class="elevation-1"
                 >
+                
                 </v-data-table>
             </v-card>
         </v-col>
@@ -226,6 +227,7 @@ export default {
             },
             fakeTable:{
                 search:'',
+                selectedItemsx: [],
                 headers: [
                     {
                         text: 'subRule_ID',
@@ -335,7 +337,112 @@ export default {
                     ],
                 }
     }),
-
+    computed:{
+        fakes(){
+            return [
+                    {
+                        id: 1,
+                        name: 'xxx',
+                        calories: 159,
+                        fat: 6.0,
+                        carbs: 24,
+                        protein: 4.0,
+                        iron: '1%',
+                        range: "1234500 to 123600"
+                    },
+                    {
+                        id: 2,
+                        name: 'xxx',
+                        calories: 237,
+                        fat: 9.0,
+                        carbs: 37,
+                        protein: 4.3,
+                        iron: '1%',
+                        range: "1234500 to 123600"
+                    },
+                    {
+                        id: 3,
+                        name: 'xxx',
+                        calories: 262,
+                        fat: 16.0,
+                        carbs: 23,
+                        protein: 6.0,
+                        iron: '7%',
+                        range: "1234500 to 123600"
+                    },
+                    {
+                        id: 4,
+                        name: 'xxx',
+                        calories: 305,
+                        fat: 3.7,
+                        carbs: 67,
+                        protein: 4.3,
+                        iron: '8%',
+                        range: "1234500 to 123600"
+                    },
+                    {
+                        id: 5,
+                        name: 'xxx',
+                        calories: 356,
+                        fat: 16.0,
+                        carbs: 49,
+                        protein: 3.9,
+                        iron: '16%',
+                        range: "1234500 to 123600"
+                    },
+                    {
+                        id: 6,
+                        name: 'xxx',
+                        calories: 375,
+                        fat: 0.0,
+                        carbs: 94,
+                        protein: 0.0,
+                        iron: '0%',
+                        range: "1234500 to 123600"
+                    },
+                    {
+                        id: 7,
+                        name: 'xxx',
+                        calories: 392,
+                        fat: 0.2,
+                        carbs: 98,
+                        protein: 0,
+                        iron: '2%',
+                        range: "4434500 to 443600"
+                    },
+                    {
+                        id: 8,
+                        name: 'xxx',
+                        calories: 408,
+                        fat: 3.2,
+                        carbs: 87,
+                        protein: 6.5,
+                        iron: '45%',
+                        range: "4434500 to 443600"
+                    },
+                    {
+                        id: 9,
+                        name: 'xxx',
+                        calories: 452,
+                        fat: 25.0,
+                        carbs: 51,
+                        protein: 4.9,
+                        iron: '22%',
+                        range: "4434500 to 443600"
+                    },
+                    {
+                        id: 10,
+                        name: 'xxx',
+                        calories: 518,
+                        fat: 26.0,
+                        carbs: 65,
+                        protein: 7,
+                        iron: '6%',
+                        range: "4434500 to 443600"
+                    },
+                    ]
+        }
+    },
     methods: {
       validate () {
         this.$refs.form.validate()
