@@ -48,6 +48,7 @@ namespace NumberRangeConverterTest
 
             Assert.Equal(new List<string> { "1234", "12350" }, res);
         }
+
         [Fact]
         public void CanDetectInEfficientRange()
         {
@@ -216,6 +217,55 @@ namespace NumberRangeConverterTest
             var ardallNewRange = res.FirstOrDefault(c => c.Customer == "Ardall").RibbonNumberRanges.Select(r => r.RibbonSbcRange).ToList();
 
             Assert.Equal(new List<string> { "12345" }, ardallNewRange);
+        }
+
+        [Fact]
+        public void removeNumberinTheMidleShouldCalculateCorrectly()
+        {
+            var numberOfDigits = 6;
+
+            var loopupNumberRange = new List<LoopupNumberRange>();
+
+            loopupNumberRange.Add(new LoopupNumberRange
+            {
+                Numbers = NumberHelper.SetNumbers(123450, 123460, "Ardall")
+            });
+
+            var sbcRanges = new List<RibbonNumberRange> {
+                new RibbonNumberRange{
+                    RibbonSbcRange = "12345",
+                    Customer = "Ardall",
+                    NumberOfDigits = numberOfDigits,
+                },
+                new RibbonNumberRange{
+                    RibbonSbcRange = "123460",
+                    Customer = "Ardall",
+                    NumberOfDigits = numberOfDigits,
+                },
+            };
+
+            //Removing numbers in the midle of range
+            foreach (var c in loopupNumberRange)
+            {
+                c.Numbers = c.Numbers.Where(n => n.Number != 123455).ToList();
+            }
+
+            // set maxDegreeOfParalleism to 1 so we can evaluate correctly
+            var res = NumberRangeHelper.RecalculateRange(sbcRanges, loopupNumberRange, MaxDegreeOfParallelism: 1);
+            var ardallNewRange = res.FirstOrDefault(c => c.Customer == "Ardall").RibbonNumberRanges.Select(r => r.RibbonSbcRange).ToList();
+
+            Assert.Equal(new List<string> { "123450","123451","123452", "123453", "123454", "123456", "123457", "123458", "123459", "123460" }, ardallNewRange);
+        }
+
+        [Fact]
+        public void ConvertingToRibbonSBCWhenNumberFirst3DigitRangeIsDifferent()
+        {
+            var rangeStart = 19990;
+            var rangeEnd = 20029;
+            var res = NumberRangeHelper.RangeToRibbonSBC(rangeStart.ToString(), rangeEnd.ToString());
+            Assert.Equal(4, res.Count);
+
+            Assert.Equal(new List<string> { "1999", "2000", "2001", "2002" }, res);
         }
     }
 }
